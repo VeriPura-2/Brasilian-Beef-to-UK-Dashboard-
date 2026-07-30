@@ -348,7 +348,7 @@ const ROLES = {
   customs:   { label:"Customs agent — George Baker", org:"George", scope:"CDS declaration status and MRN references. No commercial value.", showCommercial:false, focus:"customs" },
   vessel:    { label:"Vessel operator — MSC", org:"MSC", scope:"Bookings, ENS declarations, and manifests.", showCommercial:false, focus:"vessel" },
   finance:   { label:"Trade finance — ML", org:"ML", scope:"Payment instruments, tied to document completeness.", showCommercial:true, focus:"finance" },
-  pha:       { label:"Port Health Authority — Southampton BCP", org:"Southampton PHA", scope:"Inbound queue and document readiness. Commercial value and payment terms hidden.", showCommercial:false, focus:"pha" }
+  pha:       { label:"Port Health Authority — Southampton BCP (via TWIN)", org:"Southampton PHA", scope:"Preview of the document status and alerts VeriPura relays to TWIN for Southampton BCP's own systems — Port Health Authority does not log into VeriPura directly. Commercial value and payment terms hidden.", showCommercial:false, focus:"pha", noLogin:true }
 };
 
 // Per-role document visibility: "full" = document + status + hash/link, "status" = status badge only,
@@ -567,7 +567,7 @@ function render(){
     currentRole==="customs" ? "CDS declarations" :
     currentRole==="vessel" ? "Bookings" :
     currentRole==="finance" ? "Payment instruments" :
-    currentRole==="pha" ? "Inbound queue, Southampton BCP" :
+    currentRole==="pha" ? "Inbound queue, Southampton BCP — via TWIN" :
     "All consignments";
 
   document.getElementById('card-list').innerHTML = list.map(c=>renderItem(c)).join('');
@@ -669,10 +669,7 @@ function openPassport(id){
 
   let actions = "";
   if(currentRole==="pha"){
-    actions = '<div class="p-actions">'
-      + '<button class="p-btn" onclick="logCheck(this,\'Documentary check logged\')">Log documentary check</button>'
-      + '<button class="p-btn" onclick="logCheck(this,\'Physical inspection logged\')">Log physical inspection</button>'
-      + '</div>';
+    actions = '<div class="p-note" style="margin-top:1rem;">This is a preview of what VeriPura relays to TWIN for Southampton BCP\'s own systems. Documentary and physical inspection outcomes are logged in the Port Health Authority\'s system, not here.</div>';
   }
 
   let timeline = '<h2 class="section" style="margin-top:1.25rem;font-size:1.083rem;">Audit trail</h2><div class="timeline">'
@@ -700,12 +697,6 @@ function openPassport(id){
 
 function metaField(label,val){
   return '<div><span class="l">'+label+'</span><span class="v">'+val+'</span></div>';
-}
-
-function logCheck(btn,msg){
-  btn.textContent = msg;
-  btn.classList.add('done');
-  btn.disabled = true;
 }
 
 function closePassport(){
