@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VeriPura — Brazil to GB Frozen Beef Pilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500;600;700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --ink:#1c1a14;--paper:#f7f4ec;--card:#ffffff;--gold:#5c4110;--gold-dim:#c49a2a;
+  --green:#0f4a32;--green-lt:#e4f2ea;
+  --amber:#6b430a;--amber-lt:#faf0dc;
+  --red:#7f2416;--red-lt:#fbebe6;
+  --blue:#134266;--blue-lt:#e8f1f8;
+  --mid:#2c2818;--border:#d9d2bd;--surface:#efe9db;
+}
+body{font-family:'Instrument Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;}
+.mono{font-family:'DM Mono',monospace;}
+.serif{font-family:'DM Serif Display',serif;}
+header{
+  position:sticky;top:0;z-index:100;background:rgba(247,244,236,0.94);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--border);padding:0.9rem 1.75rem;
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+}
+.brand{display:flex;align-items:center;gap:0.75rem;}
+.brand-word{font-family:'DM Serif Display',serif;font-size:1.383rem;}
+.brand-word span{color:var(--gold);}
+.brand-tag{font-family:'DM Mono',monospace;font-size:0.733rem;font-weight:500;color:var(--mid);letter-spacing:0.08em;text-transform:uppercase;border-left:1px solid var(--border);padding-left:0.75rem;}
+.hdr-right{display:flex;align-items:center;gap:0.75rem;}
+select#role-select{
+  font-family:'DM Mono',monospace;font-size:0.843rem;font-weight:500;background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:0.5rem 0.75rem;color:var(--ink);cursor:pointer;min-width:260px;
+}
+.admin-pill{font-family:'DM Mono',monospace;font-size:0.683rem;background:var(--ink);color:var(--paper);padding:0.3rem 0.6rem;border-radius:20px;letter-spacing:0.05em;}
+.bell-wrap{position:relative;}
+.bell-btn{width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-size:1.083rem;position:relative;}
+.bell-dot{position:absolute;top:5px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--blue);}
+.bell-dot.flash{animation:bellFlash 1.1s ease;}
+@keyframes bellFlash{
+  0%{transform:scale(1);box-shadow:0 0 0 0 rgba(163,49,31,0);}
+  25%{transform:scale(2.6);box-shadow:0 0 0 6px rgba(163,49,31,0.35);}
+  55%{transform:scale(1);box-shadow:0 0 0 0 rgba(163,49,31,0);}
+  75%{transform:scale(2.2);box-shadow:0 0 0 4px rgba(163,49,31,0.25);}
+  100%{transform:scale(1);box-shadow:0 0 0 0 rgba(163,49,31,0);}
+}
+.bell-panel{
+  position:absolute;top:44px;right:0;width:320px;background:var(--card);border:1px solid var(--border);
+  border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,0.12);padding:0.5rem;display:none;z-index:200;
+}
+.bell-panel.open{display:block;}
+.bell-item{padding:0.6rem 0.6rem;border-bottom:1px solid var(--border);font-size:0.903rem;font-weight:500;color:var(--ink);cursor:pointer;transition:background 0.15s;}
+.bell-item:hover{background:var(--surface);}
+.bell-item:last-child{border-bottom:none;}
+.bell-sev{font-family:'DM Mono',monospace;font-size:0.633rem;padding:0.1rem 0.4rem;border-radius:4px;margin-right:0.4rem;}
+.sev-info{background:var(--blue-lt);color:var(--blue);}
+.sev-warn{background:var(--amber-lt);color:var(--amber);}
+.sev-crit{background:var(--red-lt);color:var(--red);}
+main{max-width:1180px;margin:0 auto;padding:1.75rem;}
+.role-banner{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;padding:0.85rem 1.1rem;
+  margin-bottom:1.25rem;font-size:0.943rem;font-weight:500;color:var(--mid);display:flex;align-items:center;gap:0.6rem;
+}
+.role-banner b{color:var(--ink);font-weight:600;}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.5rem;}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;}
+.kpi-label{font-family:'DM Mono',monospace;font-size:0.713rem;font-weight:500;color:var(--mid);letter-spacing:0.06em;text-transform:uppercase;}
+.kpi-val{font-family:'DM Serif Display',serif;font-size:1.783rem;margin-top:0.2rem;}
+h2.section{font-family:'DM Serif Display',serif;font-size:1.233rem;font-weight:400;margin:1.75rem 0 0.75rem;}
+.card-list{display:flex;flex-direction:column;gap:10px;}
+.item{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem 1.15rem;
+  cursor:pointer;transition:border-color 0.15s;
+}
+.item:hover{border-color:var(--gold);}
+.item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;}
+.item-title{font-size:1.033rem;font-weight:600;}
+.item-sub{font-family:'DM Mono',monospace;font-size:0.813rem;font-weight:500;color:var(--mid);margin-top:0.25rem;}
+.badge{font-family:'DM Mono',monospace;font-size:0.743rem;font-weight:500;padding:0.25rem 0.6rem;border-radius:20px;white-space:nowrap;}
+.b-green{background:var(--green-lt);color:var(--green);}
+.b-amber{background:var(--amber-lt);color:var(--amber);}
+.b-red{background:var(--red-lt);color:var(--red);}
+.b-blue{background:var(--blue-lt);color:var(--blue);}
+.b-gray{background:var(--surface);color:var(--mid);}
+.lifecycle{display:flex;align-items:center;gap:4px;margin-top:0.75rem;}
+.lc-step{flex:1;text-align:center;}
+.lc-dot{width:9px;height:9px;border-radius:50%;background:var(--border);display:inline-block;}
+.lc-dot.done{background:var(--green);}
+.lc-dot.now{background:var(--gold);}
+.lc-label{font-size:0.723rem;font-weight:500;color:var(--mid);margin-top:3px;display:block;}
+.lc-line{flex:1;height:1px;background:var(--border);}
+.item-note{font-size:0.833rem;font-weight:500;color:var(--mid);margin-top:0.5rem;}
+.overlay{position:fixed;inset:0;background:rgba(28,26,20,0.35);z-index:900;opacity:0;pointer-events:none;transition:opacity 0.25s;}
+.overlay.open{opacity:1;pointer-events:all;}
+.passport{
+  position:fixed;top:0;right:0;bottom:0;width:560px;max-width:92vw;background:var(--paper);
+  border-left:1px solid var(--border);z-index:901;transform:translateX(100%);
+  transition:transform 0.3s ease;overflow-y:auto;padding:1.5rem;
+}
+.passport.open{transform:translateX(0);}
+.p-close{float:right;background:none;border:1px solid var(--border);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:0.983rem;}
+.p-ref{font-family:'DM Mono',monospace;font-size:0.803rem;font-weight:500;color:var(--gold);letter-spacing:0.06em;}
+.p-title{font-family:'DM Serif Display',serif;font-size:1.483rem;margin:0.2rem 0 0.3rem;}
+.p-route{font-size:0.943rem;font-weight:500;color:var(--mid);}
+.p-meta{display:grid;grid-template-columns:repeat(2,1fr);gap:0.85rem;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;margin:1rem 0;}
+.p-meta div span{display:block;}
+.p-meta .l{font-size:0.733rem;font-weight:500;color:var(--mid);text-transform:uppercase;letter-spacing:0.05em;font-family:'DM Mono',monospace;}
+.p-meta .v{font-size:0.963rem;font-weight:500;margin-top:0.15rem;}
+.p-doc{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0.7rem 0.9rem;margin-bottom:6px;}
+.p-doc-name{font-size:0.943rem;font-weight:600;color:var(--ink);}
+.p-doc-sub{font-size:0.803rem;font-weight:500;color:var(--mid);margin-top:3px;}
+.p-doc-source{display:block;font-family:'DM Mono',monospace;font-size:0.7rem;font-weight:500;color:var(--gold);margin-top:3px;text-transform:uppercase;letter-spacing:0.03em;}
+.p-doc-right{display:flex;align-items:center;gap:0.7rem;}
+.p-doc-link{font-family:'DM Mono',monospace;font-size:0.803rem;font-weight:600;color:var(--blue);text-decoration:none;cursor:pointer;}
+.p-hash{font-family:'DM Mono',monospace;font-size:0.743rem;font-weight:500;color:var(--mid);margin-top:0.1rem;}
+.p-note{font-size:0.843rem;font-weight:500;color:var(--mid);margin-top:1rem;padding-top:0.85rem;border-top:1px solid var(--border);}
+.p-actions{display:flex;gap:0.5rem;margin-top:1rem;}
+.p-btn{font-family:'DM Mono',monospace;font-size:0.803rem;font-weight:500;border:1px solid var(--border);background:var(--card);border-radius:8px;padding:0.5rem 0.85rem;cursor:pointer;color:var(--ink);}
+.p-btn:hover{border-color:var(--gold);}
+.p-btn.done{background:var(--green-lt);color:var(--green);border-color:var(--green);}
+.timeline{margin-top:0.5rem;}
+.tl-row{font-size:0.883rem;font-weight:500;color:var(--mid);padding:0.45rem 0;border-bottom:1px solid var(--border);}
+.tl-row b{color:var(--ink);font-weight:600;}
+.route-strip{display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem;}
+.route-lane{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0.7rem 1rem;display:flex;align-items:center;gap:0.75rem;}
+.route-lane .rl-ports{font-size:0.903rem;font-weight:500;flex:1;}
+.route-lane .rl-count{font-family:'DM Mono',monospace;font-size:0.763rem;color:var(--mid);font-weight:500;}
+.rl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+#passport-map{width:100%;height:150px;border-radius:8px;margin:0.75rem 0;}
+#tracking-map-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:0.5rem;margin-bottom:1.25rem;}
+#tracking-map{width:100%;height:380px;border-radius:8px;}
+.tip-id{color:var(--gold);font-weight:600;margin-right:6px;}
+.fullview{position:fixed;inset:0;z-index:1000;background:var(--paper);display:none;overflow-y:auto;}
+.fullview.open{display:block;}
+.fv-header{position:sticky;top:0;background:rgba(247,244,236,0.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:1rem 1.75rem;display:flex;align-items:center;gap:1rem;}
+.fv-back{font-family:'DM Mono',monospace;font-size:0.83rem;font-weight:500;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:0.5rem 1rem;cursor:pointer;display:inline-flex;align-items:center;gap:0.4rem;}
+.fv-back:hover{border-color:var(--gold-dim);}
+.fv-body{max-width:900px;margin:0 auto;padding:1.75rem;}
+.fv-priority-tag{font-family:'DM Mono',monospace;font-size:0.66rem;font-weight:600;color:var(--red);background:var(--red-lt);border-radius:4px;padding:0.15rem 0.5rem;margin-left:0.5rem;}
+.leaflet-container{background:#eae4d4 !important;font-family:'Instrument Sans',sans-serif;}
+.leaflet-popup-content-wrapper{border-radius:8px !important;box-shadow:0 8px 24px rgba(0,0,0,0.15) !important;}
+.leaflet-popup-content{font-family:'DM Mono',monospace;font-size:0.783rem;margin:0.6rem 0.8rem !important;}
+.map-pop-id{color:var(--gold);font-size:0.703rem;margin-bottom:2px;}
+.map-pop-name{font-family:'Instrument Sans',sans-serif;font-weight:500;font-size:0.883rem;color:var(--ink);}
+.map-pop-link{color:var(--blue);cursor:pointer;font-size:0.703rem;display:block;margin-top:4px;}
+.port-dot{width:9px;height:9px;border-radius:50%;background:var(--ink);border:2px solid var(--paper);box-shadow:0 0 0 1px var(--border);}
+.route-dot{width:13px;height:13px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.35);cursor:pointer;}
+.new-po-btn{font-family:'DM Mono',monospace;font-size:0.803rem;font-weight:500;background:var(--ink);color:var(--paper);border:none;border-radius:8px;padding:0.6rem 1rem;cursor:pointer;margin-bottom:1.1rem;}
+.new-po-btn:hover{background:#33301f;}
+.status-filter-row{display:flex;align-items:center;gap:0.5rem;margin-bottom:1.1rem;flex-wrap:wrap;}
+.sf-btn{font-family:'Instrument Sans',sans-serif;font-size:0.83rem;font-weight:500;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:0.4rem 0.9rem;cursor:pointer;display:inline-flex;align-items:center;gap:0.4rem;color:var(--ink);}
+.sf-btn:hover{border-color:var(--gold-dim);}
+.sf-btn.active{border:2px solid var(--gold-dim);background:var(--amber-lt);}
+.sf-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.po-modal{position:fixed;inset:0;z-index:950;display:none;align-items:center;justify-content:center;background:rgba(28,26,20,0.35);}
+.po-modal.open{display:flex;}
+.po-modal-inner{background:var(--paper);border:1px solid var(--border);border-radius:12px;padding:1.5rem;width:500px;max-width:92vw;max-height:85vh;overflow-y:auto;}
+.po-field{margin-bottom:0.9rem;}
+.po-field label{display:block;font-family:'DM Mono',monospace;font-size:0.733rem;font-weight:500;color:var(--mid);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.3rem;}
+.po-field input,.po-field select{width:100%;font-family:'Instrument Sans',sans-serif;font-size:0.933rem;padding:0.55rem 0.7rem;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--ink);}
+.po-actions{display:flex;justify-content:flex-end;gap:0.5rem;margin-top:1.1rem;}
+.p-btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+.item.needs-response{border-color:var(--red);}
+.respond-btn{font-family:'DM Mono',monospace;font-size:0.763rem;font-weight:500;background:var(--gold-dim);color:var(--ink);border:none;border-radius:6px;padding:0.45rem 0.85rem;cursor:pointer;margin-top:0.65rem;}
+.po-steps{display:flex;gap:6px;margin-bottom:1.1rem;}
+.po-step-dot{width:30px;height:4px;border-radius:2px;background:var(--border);}
+.po-step-dot.active{background:var(--gold);}
+.po-step-dot.done{background:var(--gold-dim);}
+.po-tabs{display:flex;gap:0.4rem;margin-bottom:0.9rem;}
+.po-tab{flex:1;font-family:'DM Mono',monospace;font-size:0.78rem;font-weight:500;padding:0.55rem 0.6rem;border:1px solid var(--border);background:var(--card);border-radius:8px;cursor:pointer;color:var(--mid);}
+.po-tab.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+.po-dropzone{display:flex;flex-direction:column;align-items:center;text-align:center;gap:0.3rem;border:1.5px dashed var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem;background:var(--surface);}
+.po-dropzone-icon{font-size:1.3rem;color:var(--gold);}
+.po-dropzone-input{width:100%;text-align:center;font-family:'DM Mono',monospace;font-size:0.85rem;font-weight:600;border:none;background:transparent;color:var(--ink);}
+.po-dropzone-sub{font-size:0.75rem;font-weight:500;color:var(--mid);}
+.po-code{font-family:'DM Mono',monospace;font-size:0.73rem;font-weight:500;background:var(--ink);color:#d8d2bb;border-radius:8px;padding:0.7rem 0.8rem;line-height:1.55;overflow-x:auto;margin-bottom:0.4rem;}
+.po-req-list{max-height:280px;overflow-y:auto;margin-bottom:0.5rem;}
+.po-req-row{display:flex;justify-content:space-between;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0.55rem 0.8rem;margin-bottom:6px;}
+.po-req-source{font-size:0.73rem;font-weight:500;color:var(--mid);margin-top:2px;}
+.reg-badge{margin-left:0.4rem;}
+.vis-status-note{font-style:italic;}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="brand-word">Veri<span>Pura</span></div>
+    <div class="brand-tag">Brazil &rarr; GB frozen beef pilot</div>
+  </div>
+  <div class="hdr-right">
+    <span class="admin-pill">SUPERADMIN VIEW</span>
+    <select id="role-select" class="mono" onchange="setRole(this.value)"></select>
+    <div class="bell-wrap">
+      <button class="bell-btn" onclick="toggleBell()">&#128276;<span class="bell-dot" id="bell-dot"></span></button>
+      <div class="bell-panel" id="bell-panel"></div>
+    </div>
+  </div>
+</header>
+<main>
+  <div class="role-banner" id="role-banner"></div>
+  <div id="action-row"></div>
+  <div class="status-filter-row" id="status-filter-row"></div>
+  <div class="route-strip" id="route-strip"></div>
+  <div id="tracking-map-wrap" style="display:none;"><div id="tracking-map"></div></div>
+  <div class="kpi-row" id="kpi-row"></div>
+  <h2 class="section" id="list-title">Consignments</h2>
+  <div class="card-list" id="card-list"></div>
+</main>
+
+<div class="overlay" id="overlay" onclick="closePassport()"></div>
+<div class="passport" id="passport"></div>
+
+<div class="po-modal" id="po-modal">
+  <div class="po-modal-inner" id="po-modal-inner"></div>
+</div>
+
+<div class="fullview" id="fullview">
+  <div class="fv-header">
+    <button class="fv-back" onclick="closeFullView()">&larr; Back to map</button>
+  </div>
+  <div class="fv-body" id="fv-body"></div>
+</div>
+
+<script>
+const CONSIGNMENTS = [
+  {
+    id:"BR-GB-0143", commodity:"Frozen boneless beef", hs:"0202.30",
+    exporter:"Felix — Amazon Export Ltda (Brazil)", importer:"Emma — Nordic Frozen Foods Ltd (GB)",
+    importerCountry:"United Kingdom", portLoad:"Santos", portDischarge:"Southampton BCP",
+    vessel:"MSC", voyage:"VOY-2214", eta:"03 Aug 2026", netWeight:"21,400 kg",
+    container:"MSKU4471290", seal:"SL8842", temp:"-18°C frozen",
+    lifecycle:["done","done","now","pending"], transitProgress:0.62,
+    documents:[
+      {name:"Purchase order / commercial agreement", category:"Customs & logistics", status:"verified", note:"Uploaded by Emma at PO creation", hash:"0x4402…11ac"},
+      {name:"Export Health Certificate (EHC)", category:"Certifications", status:"verified", note:"Cross-checked against MAPA / SIGSIF registry", hash:"0x8f2a…c91d"},
+      {name:"Commercial invoice", category:"Customs & logistics", status:"verified", note:"L1 verified", hash:"0x1c40…7be2"},
+      {name:"Packing list", category:"Customs & logistics", status:"verified", note:"L1 verified", hash:"0x9d21…3aa0"},
+      {name:"Bill of lading", category:"Customs & logistics", status:"verified", note:"L1 verified", hash:"0x77e4…f102"},
+      {name:"DU-E export declaration", category:"Regulatory & trade", status:"verified", note:"Cross-checked against Siscomex", hash:"0x2b19…0dc4"},
+      {name:"ENS / Safety and Security (S&S) declaration", category:"Customs & logistics", status:"verified", note:"Filed by MSC before loading — security MRN 24GBSS4471", hash:"0x30cc…9a17"},
+      {name:"Vessel manifest", category:"Customs & logistics", status:"verified", note:"Submitted by MSC on departure — UCN created in CNS", hash:"0x51dd…6f28"},
+      {name:"CHED-P pre-notification (IPAFFS)", category:"Regulatory & trade", status:"verified", note:"UNN-88213", hash:"0x64af…22e1"},
+      {name:"CDS import declaration", category:"Customs & logistics", status:"pending", note:"Pre-lodged, customs MRN pending arrival", hash:null}
+    ],
+    timeline:[
+      {who:"Exporter", what:"EHC uploaded and verified", when:"18 Jul, 09:12"},
+      {who:"Vessel operator", what:"ENS/S&S declaration filed", when:"20 Jul, 14:05"},
+      {who:"Importer", what:"CHED-P submitted on IPAFFS", when:"21 Jul, 08:40"},
+      {who:"Customs agent", what:"CDS declaration pre-lodged", when:"22 Jul, 11:20"},
+      {who:"Freight forwarder", what:"Container loaded at Santos", when:"22 Jul, 17:50"}
+    ]
+  },
+  {
+    id:"BR-GB-0151", commodity:"Frozen beef trimmings", hs:"0202.30",
+    exporter:"Felix — Amazon Export Ltda (Brazil)", importer:"Emma — Nordic Frozen Foods Ltd (GB)",
+    importerCountry:"United Kingdom", portLoad:"Santos", portDischarge:"Southampton BCP",
+    vessel:"MSC", voyage:"VOY-2221", eta:"09 Aug 2026", netWeight:"18,200 kg",
+    container:"pending", seal:"pending", temp:"-18°C frozen",
+    lifecycle:["now","pending","pending","pending"], transitProgress:0,
+    documents:[
+      {name:"Purchase order / commercial agreement", category:"Customs & logistics", status:"verified", note:"Uploaded by Emma at PO creation", hash:"0x99e1…203f"},
+      {name:"Export Health Certificate (EHC)", category:"Certifications", status:"awaiting", note:"MAPA inspection scheduled", hash:null},
+      {name:"Commercial invoice", category:"Customs & logistics", status:"verified", note:"L1 verified", hash:"0x5a10…9cb3"},
+      {name:"Packing list", category:"Customs & logistics", status:"verified", note:"L1 verified", hash:"0x3e88…140f"},
+      {name:"Bill of lading", category:"Customs & logistics", status:"awaiting", note:"Not yet uploaded", hash:null},
+      {name:"DU-E export declaration", category:"Regulatory & trade", status:"awaiting", note:"Not yet uploaded", hash:null},
+      {name:"ENS / Safety and Security (S&S) declaration", category:"Customs & logistics", status:"awaiting", note:"Due 24h before loading at Santos — not yet filed", hash:null},
+      {name:"Vessel manifest", category:"Customs & logistics", status:"awaiting", note:"Filed by MSC on departure — not yet applicable", hash:null},
+      {name:"CHED-P pre-notification (IPAFFS)", category:"Regulatory & trade", status:"awaiting", note:"Needs EHC first", hash:null},
+      {name:"CDS import declaration", category:"Customs & logistics", status:"awaiting", note:"Not yet started", hash:null}
+    ],
+    timeline:[
+      {who:"Exporter", what:"EHC application submitted to MAPA", when:"24 Jul, 10:02"},
+      {who:"Freight forwarder", what:"Ocean freight booked with MSC", when:"24 Jul, 15:30"}
+    ]
+  },
+  {
+    id:"BR-GB-0129", commodity:"Frozen boneless beef", hs:"0202.30",
+    exporter:"Felix — Amazon Export Ltda (Brazil)", importer:"Emma — Nordic Frozen Foods Ltd (GB)",
+    importerCountry:"United Kingdom", portLoad:"Santos", portDischarge:"Southampton BCP",
+    vessel:"MSC", voyage:"VOY-2188", eta:"12 Jul 2026 (delivered)", netWeight:"22,000 kg",
+    container:"MSKU2201847", seal:"SL7710", temp:"-18°C frozen",
+    lifecycle:["done","done","done","done"], transitProgress:1,
+    documents:[
+      {name:"Purchase order / commercial agreement", category:"Customs & logistics", status:"verified", note:"Uploaded by Emma at PO creation", hash:"0x30a5…f291"},
+      {name:"Export Health Certificate (EHC)", category:"Certifications", status:"verified", note:"Cross-checked against MAPA / SIGSIF registry", hash:"0xa412…76d0"},
+      {name:"Commercial invoice", category:"Customs & logistics", status:"verified", note:"L1 verified", hash:"0x0091…be44"},
+      {name:"Packing list", category:"Customs & logistics", status:"verified", note:"L1 verified", hash:"0x66cd…9021"},
+      {name:"Bill of lading", category:"Customs & logistics", status:"verified", note:"L1 verified", hash:"0x1187…4fa3"},
+      {name:"DU-E export declaration", category:"Regulatory & trade", status:"verified", note:"Cross-checked against Siscomex", hash:"0x9e30…c112"},
+      {name:"ENS / Safety and Security (S&S) declaration", category:"Customs & logistics", status:"verified", note:"Filed by MSC before loading — security MRN 24GBSS8710", hash:"0x1a90…c440"},
+      {name:"Vessel manifest", category:"Customs & logistics", status:"verified", note:"Submitted by MSC on departure — UCN created in CNS", hash:"0x77b2…e015"},
+      {name:"CHED-P pre-notification (IPAFFS)", category:"Regulatory & trade", status:"verified", note:"UNN-87910", hash:"0x4471…8bc0"},
+      {name:"CDS import declaration", category:"Customs & logistics", status:"verified", note:"Cleared, customs MRN 24GB88213A", hash:"0x2280…de19"}
+    ],
+    timeline:[
+      {who:"Port Health Authority", what:"Documentary and physical checks passed", when:"11 Jul, 09:15"},
+      {who:"HMG systems", what:"CDS cleared, IPAFFS updated", when:"11 Jul, 13:40"},
+      {who:"Port system", what:"Destin8 released the container", when:"11 Jul, 16:05"},
+      {who:"Local haulier", what:"Delivered to Emma's premises", when:"12 Jul, 08:30"}
+    ]
+  },
+  {
+    id:"NL-0089", commodity:"Organic Arabica coffee", hs:"0901.21",
+    exporter:"Felix — Amazon Export Ltda (Brazil)", importer:"Nordic Brews AB (Netherlands)",
+    importerCountry:"Netherlands", portLoad:"Santos", portDischarge:"Rotterdam",
+    vessel:"MSC", voyage:"VOY-2201", eta:"30 Jul 2026", netWeight:"10,000 kg",
+    container:"MSKU3466282", seal:"SL301749", temp:"Ambient",
+    lifecycle:["done","now","pending","pending"], transitProgress:0.08,
+    documents:[
+      {name:"Purchase order / commercial agreement", category:"Customs & logistics", status:"verified", note:"Uploaded by importer at PO creation", hash:"0x1140…6bd2"},
+      {name:"Organic certificate", category:"Certifications", status:"flagged", note:"Buyer name mismatch vs commercial invoice — escalated for review", hash:"0x5512…aa90"},
+      {name:"Commercial invoice", category:"Customs & logistics", status:"verified", note:"L1 verified", hash:"0x77a1…20fd"},
+      {name:"Packing list", category:"Customs & logistics", status:"verified", note:"L1 verified", hash:"0x8802…41be"},
+      {name:"Bill of lading", category:"Customs & logistics", status:"verified", note:"L1 verified", hash:"0x0a91…d874"},
+      {name:"ENS / Safety and Security (S&S) declaration", category:"Customs & logistics", status:"verified", note:"Filed by MSC before loading — security MRN 24GBSS2091", hash:"0x0f6b…3d82"},
+      {name:"Vessel manifest", category:"Customs & logistics", status:"awaiting", note:"Filed by MSC on departure — not yet applicable", hash:null}
+    ],
+    timeline:[
+      {who:"Exporter", what:"Organic certificate uploaded", when:"23 Jul, 12:00"},
+      {who:"VeriPura", what:"Reconciliation flagged a buyer name mismatch, escalated for human review", when:"23 Jul, 12:04"}
+    ]
+  }
+];
+
+const ALERTS = [
+  {role:"exporter", sev:"info", cid:"BR-GB-0143", text:"Your EHC for #BR-GB-0143 passed verification. Emma can now submit the CHED-P."},
+  {role:"importer", sev:"info", cid:"BR-GB-0143", text:"EHC verified for #BR-GB-0143. Ready to submit CHED-P on IPAFFS."},
+  {role:"pha", sev:"info", cid:"BR-GB-0143", text:"Advance notice: EHC verified for an inbound consignment, ETA Southampton 03 Aug (#BR-GB-0143). Not yet a formal pre-notification."},
+  {role:"pha", sev:"info", cid:"BR-GB-0143", text:"Formal pre-notification received: CHED-P submitted on IPAFFS for #BR-GB-0143, UNN-88213."},
+  {role:"pha", sev:"warn", cid:"BR-GB-0151", text:"#BR-GB-0151: EHC not yet verified and ETA is 09 Aug — outside the normal advance window."},
+  {role:"customs", sev:"info", cid:"BR-GB-0143", text:"EHC verified for #BR-GB-0143 — ready to reference in CDS pre-lodgement."},
+  {role:"veripura", sev:"warn", cid:"BR-GB-0151", text:"#BR-GB-0151: bill of lading and DU-E still awaiting upload, EHC inspection pending."},
+  {role:"veripura", sev:"crit", cid:"NL-0089", text:"#NL-0089: organic certificate escalated for human review — buyer name mismatch."},
+  {role:"exporter", sev:"crit", cid:"NL-0089", text:"A discrepancy on #NL-0089 is under review. You'll be notified when it's resolved."},
+  {role:"forwarder", sev:"warn", cid:"BR-GB-0143", text:"#BR-GB-0143: ENS due before loading — file with MSC."}
+];
+
+const ROLES = {
+  veripura:  { label:"VeriPura — superadmin (all parties)", org:"VeriPura", scope:"Everything, across every party — the operator view for the demo.", showCommercial:true, showAllParties:true },
+  importer:  { label:"Importer — Emma, Nordic Frozen Foods Ltd", org:"Emma", scope:"Your inbound consignments to the United Kingdom, full document detail.", showCommercial:true, filterParty:"importer" },
+  exporter:  { label:"Exporter — Felix, Amazon Export Ltda", org:"Felix", scope:"Your outbound consignments, grouped by importer. GB-side steps are read-only.", showCommercial:true, filterParty:"exporter", readOnlyDest:true },
+  forwarder: { label:"International freight forwarder — Gavin Johnson", org:"Gavin", scope:"Warehouse pickup through GB arrival. No commercial value or payment terms.", showCommercial:false, focus:"logistics" },
+  customs:   { label:"Customs agent — George Baker", org:"George", scope:"CDS declaration status and MRN references. No commercial value.", showCommercial:false, focus:"customs" },
+  vessel:    { label:"Vessel operator — MSC", org:"MSC", scope:"Bookings, ENS declarations, and manifests.", showCommercial:false, focus:"vessel" },
+  finance:   { label:"Trade finance — ML", org:"ML", scope:"Payment instruments, tied to document completeness.", showCommercial:true, focus:"finance" },
+  pha:       { label:"Port Health Authority — Southampton BCP", org:"Southampton PHA", scope:"Inbound queue and document readiness. Commercial value and payment terms hidden.", showCommercial:false, focus:"pha" }
+};
+
+// Per-role document visibility: "full" = document + status + hash/link, "status" = status badge only,
+// no detail, "hidden" = document not shown at all. Grounded in each actor's role in the Test Script.
+// The Brazilian Competent Authority is not a platform user, so it has no row here — see docVisibility().
+const DOC_VISIBILITY = {
+  "Purchase order / commercial agreement":            {importer:"full", exporter:"full",   forwarder:"hidden", customs:"hidden", vessel:"hidden", finance:"full",   pha:"hidden"},
+  "Commercial invoice":                                {importer:"full", exporter:"full",   forwarder:"hidden", customs:"full",   vessel:"hidden", finance:"full",   pha:"hidden"},
+  "Packing list":                                      {importer:"full", exporter:"full",   forwarder:"full",   customs:"full",   vessel:"hidden", finance:"full",   pha:"hidden"},
+  "Bill of lading":                                    {importer:"full", exporter:"full",   forwarder:"full",   customs:"full",   vessel:"full",   finance:"full",   pha:"full"},
+  "Export Health Certificate (EHC)":                   {importer:"full", exporter:"full",   forwarder:"status", customs:"full",   vessel:"hidden", finance:"full",   pha:"full"},
+  "DU-E export declaration":                           {importer:"full", exporter:"full",   forwarder:"hidden", customs:"full",   vessel:"hidden", finance:"hidden", pha:"hidden"},
+  "ENS / Safety and Security (S&S) declaration":       {importer:"full", exporter:"status", forwarder:"full",   customs:"hidden", vessel:"full",   finance:"hidden", pha:"hidden"},
+  "Vessel manifest":                                   {importer:"full", exporter:"status", forwarder:"full",   customs:"hidden", vessel:"full",   finance:"hidden", pha:"hidden"},
+  "CHED-P pre-notification (IPAFFS)":                  {importer:"full", exporter:"status", forwarder:"hidden", customs:"full",   vessel:"hidden", finance:"hidden", pha:"full"},
+  "CDS import declaration":                            {importer:"full", exporter:"status", forwarder:"hidden", customs:"full",   vessel:"hidden", finance:"hidden", pha:"status"}
+};
+
+// Roles that see a "Registry-verified" badge on the EHC row, representing VeriPura's own independent
+// cross-check against the Brazilian Competent Authority's MAPA / SIGSIF registry. The Brazilian CA itself
+// has no VeriPura login — this badge is how its verification result surfaces to the people who need it.
+const REGISTRY_BADGE_ROLES = ["importer","exporter","pha","veripura"];
+
+function docVisibility(docName, role){
+  if(role==="veripura") return "full";
+  const row = DOC_VISIBILITY[docName];
+  if(!row) return "full";
+  return row[role] || "full";
+}
+
+const EXPORTERS = [
+  { id:"felix", label:"Felix — Amazon Export Ltda (Brazil)", connected:true }
+];
+
+let poCounter = 152;
+let currentRole = "veripura";
+
+const PORT_COORDS = {
+  "Santos": [-23.96, -46.33],
+  "Southampton BCP": [50.90, -1.40],
+  "Rotterdam": [51.92, 4.48]
+};
+
+const TRACKING_ROLES = ["pha","forwarder"];
+const PHA_PRIORITY_DOCS = ["Export Health Certificate (EHC)","CHED-P pre-notification (IPAFFS)"];
+
+function ragColor(rag){
+  return rag==="green" ? "#1a6b4a" : rag==="amber" ? "#8a651c" : "#a3311f";
+}
+
+function shipPosition(c){
+  const from = PORT_COORDS[c.portLoad], to = PORT_COORDS[c.portDischarge];
+  if(!from || !to) return null;
+  const t = c.transitProgress==null ? 0 : c.transitProgress;
+  return [ from[0]+(to[0]-from[0])*t, from[1]+(to[1]-from[1])*t ];
+}
+
+function daysToArrival(c){
+  if(c.transitProgress>=1) return "Delivered";
+  const remaining = Math.round((1-(c.transitProgress||0))*11);
+  return remaining<=0 ? "Arriving" : remaining+" day"+(remaining===1?"":"s")+" to "+c.portDischarge;
+}
+
+function renderRouteStrip(){
+  const lanes = {};
+  relevantConsignments().forEach(c=>{
+    const key = c.portLoad+" → "+c.portDischarge;
+    if(!lanes[key]) lanes[key] = [];
+    lanes[key].push(c);
+  });
+  document.getElementById('route-strip').innerHTML = Object.entries(lanes).map(([lane,cs])=>{
+    const rags = cs.map(overallRag);
+    const worst = rags.includes("red") ? "red" : rags.includes("amber") ? "amber" : "green";
+    return '<div class="route-lane"><span class="rl-dot" style="background:'+ragColor(worst)+'"></span>'
+      + '<span class="rl-ports">'+lane+'</span>'
+      + '<span class="rl-count">'+cs.length+' consignment'+(cs.length===1?'':'s')+'</span></div>';
+  }).join('') || '<div class="route-lane"><span class="rl-ports">No consignments for this view</span></div>';
+}
+
+let passportMap = null;
+function renderPassportMap(c){
+  if(passportMap){ passportMap.remove(); passportMap = null; }
+  const from = PORT_COORDS[c.portLoad], to = PORT_COORDS[c.portDischarge];
+  if(!from || !to) return;
+  passportMap = L.map('passport-map', { zoomControl:false, attributionControl:false, scrollWheelZoom:false, dragging:false, noWrap:true });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains:'abcd', maxZoom:19, noWrap:true }).addTo(passportMap);
+  const color = ragColor(overallRag(c));
+  L.polyline([from,to], {color, weight:2, dashArray:'5 6'}).addTo(passportMap);
+  [from,to].forEach(pt=>{
+    L.marker(pt, {icon:L.divIcon({className:'', html:'<div class="route-dot" style="background:'+color+'"></div>', iconSize:[12,12], iconAnchor:[6,6]})}).addTo(passportMap);
+  });
+  passportMap.fitBounds(L.latLngBounds([from,to]).pad(0.4));
+}
+
+let trackingMap = null;
+function renderTrackingMap(){
+  const wrap = document.getElementById('tracking-map-wrap');
+  const strip = document.getElementById('route-strip');
+  if(!TRACKING_ROLES.includes(currentRole)){
+    wrap.style.display = 'none';
+    strip.style.display = 'flex';
+    return;
+  }
+  wrap.style.display = 'block';
+  strip.style.display = 'none';
+
+  if(trackingMap){ trackingMap.remove(); trackingMap = null; }
+  trackingMap = L.map('tracking-map', { zoomControl:true, attributionControl:false, scrollWheelZoom:false, worldCopyJump:false, noWrap:true });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { subdomains:'abcd', maxZoom:19, noWrap:true }).addTo(trackingMap);
+
+  const list = relevantConsignments();
+  const points = [];
+  const portsUsed = new Set();
+  list.forEach(c=>{ portsUsed.add(c.portLoad); portsUsed.add(c.portDischarge); });
+  portsUsed.forEach(port=>{
+    const coord = PORT_COORDS[port];
+    if(!coord) return;
+    L.marker(coord, {icon:L.divIcon({className:'', html:'<div class="port-dot"></div>', iconSize:[9,9], iconAnchor:[5,5]})}).addTo(trackingMap).bindTooltip(port,{direction:'top'});
+    points.push(coord);
+  });
+
+  list.forEach(c=>{
+    const from = PORT_COORDS[c.portLoad], to = PORT_COORDS[c.portDischarge];
+    if(!from || !to) return;
+    const rag = overallRag(c);
+    const color = ragColor(rag);
+    L.polyline([from,to], {color, weight:1.5, dashArray:'4 6', opacity:0.6}).addTo(trackingMap);
+    const pos = shipPosition(c);
+    if(!pos) return;
+    points.push(pos);
+    const marker = L.marker(pos, {icon:L.divIcon({className:'', html:'<div class="route-dot" style="background:'+color+'"></div>', iconSize:[14,14], iconAnchor:[7,7]})}).addTo(trackingMap);
+    marker.bindTooltip('<span class="tip-id">'+c.id+'</span> '+c.commodity+' — '+daysToArrival(c), {direction:'top', offset:[0,-8]});
+    marker.on('click', ()=>openFullView(c.id));
+  });
+
+  if(points.length){
+    trackingMap.fitBounds(L.latLngBounds(points).pad(0.3));
+  } else {
+    trackingMap.setView([10,-25], 2);
+  }
+}
+
+let statusFilter = "all";
+
+function setRole(role){
+  currentRole = role;
+  statusFilter = "all";
+  document.getElementById('role-select').value = role;
+  render();
+}
+
+function setStatusFilter(f){
+  statusFilter = f;
+  render();
+}
+
+function statusBadge(status){
+  if(status==="verified") return '<span class="badge b-green">Verified</span>';
+  if(status==="pending") return '<span class="badge b-amber">Pending</span>';
+  if(status==="awaiting") return '<span class="badge b-gray">Awaiting upload</span>';
+  if(status==="flagged") return '<span class="badge b-red">Flagged</span>';
+  return '<span class="badge b-gray">'+status+'</span>';
+}
+
+function docCompleteness(c){
+  const total = c.documents.length;
+  const verified = c.documents.filter(d=>d.status==="verified").length;
+  const flagged = c.documents.some(d=>d.status==="flagged");
+  return {total, verified, flagged};
+}
+
+function overallRag(c){
+  const {total, verified, flagged} = docCompleteness(c);
+  if(flagged) return "red";
+  if(verified===total) return "green";
+  return "amber";
+}
+
+const FILTERABLE_ROLES = ["importer","exporter","forwarder"];
+
+function relevantConsignments(){
+  const r = ROLES[currentRole];
+  let list = CONSIGNMENTS;
+  if(r.filterParty==="importer") list = CONSIGNMENTS.filter(c=>c.importer.startsWith("Emma"));
+  // Exporter view: match by exporterId when a consignment carries one (created via the New PO wizard),
+  // otherwise fall back to matching on the exporter name for the four seed consignments. This keeps
+  // consignments routed to a different/invited exporter out of Felix's view.
+  if(r.filterParty==="exporter") list = CONSIGNMENTS.filter(c=> c.exporterId ? c.exporterId==="felix" : c.exporter.startsWith("Felix"));
+  if(currentRole==="pha") list = list.filter(c=>c.portDischarge==="Southampton BCP");
+  if(FILTERABLE_ROLES.includes(currentRole) && statusFilter!=="all"){
+    list = list.filter(c=>overallRag(c)===statusFilter);
+  }
+  return list;
+}
+
+function render(){
+  const r = ROLES[currentRole];
+  document.getElementById('role-banner').innerHTML =
+    '<b>'+r.label+'</b> &middot; '+r.scope;
+
+  const list = relevantConsignments();
+  const rag = list.map(overallRag);
+  const kpis = [
+    {label:"Consignments", val:list.length},
+    {label:"Fully verified", val:rag.filter(x=>x==="green").length},
+    {label:"Awaiting documents", val:rag.filter(x=>x==="amber").length},
+    {label:"Flagged", val:rag.filter(x=>x==="red").length}
+  ];
+  document.getElementById('kpi-row').innerHTML = kpis.map(k=>
+    '<div class="kpi"><div class="kpi-label">'+k.label+'</div><div class="kpi-val">'+k.val+'</div></div>'
+  ).join('');
+
+  document.getElementById('list-title').textContent =
+    currentRole==="exporter" ? "Your shipments, by importer" :
+    currentRole==="forwarder" ? "Shipments, warehouse to GB arrival" :
+    currentRole==="customs" ? "CDS declarations" :
+    currentRole==="vessel" ? "Bookings" :
+    currentRole==="finance" ? "Payment instruments" :
+    currentRole==="pha" ? "Inbound queue, Southampton BCP" :
+    "All consignments";
+
+  document.getElementById('card-list').innerHTML = list.map(c=>renderItem(c)).join('');
+
+  renderBell();
+  renderRouteStrip();
+  renderTrackingMap();
+  renderActionRow();
+  renderStatusFilter();
+}
+
+function renderStatusFilter(){
+  const el = document.getElementById('status-filter-row');
+  if(!FILTERABLE_ROLES.includes(currentRole)){
+    el.innerHTML = '';
+    return;
+  }
+  const options = [
+    {key:"all", label:"All", dot:null},
+    {key:"green", label:"On track", dot:"var(--green)"},
+    {key:"amber", label:"Attention", dot:"var(--gold-dim)"},
+    {key:"red", label:"Critical", dot:"var(--red)"}
+  ];
+  el.innerHTML = options.map(o=>
+    '<button class="sf-btn'+(statusFilter===o.key?' active':'')+'" onclick="setStatusFilter(\''+o.key+'\')">'
+    + (o.dot ? '<span class="sf-dot" style="background:'+o.dot+'"></span>' : '')
+    + o.label + '</button>'
+  ).join('');
+}
+
+function renderItem(c){
+  const rag = overallRag(c);
+  const badgeClass = rag==="green" ? "b-green" : rag==="amber" ? "b-amber" : "b-red";
+  const ragLabel = rag==="green" ? "Verified" : rag==="amber" ? "In progress" : "Flagged";
+  const stages = ["Pickup","Loaded, Santos","In transit","GB arrival"];
+  const lc = c.lifecycle.map((s,i)=>
+    '<div class="lc-step"><span class="lc-dot '+(s==="done"?"done":s==="now"?"now":"")+'"></span><span class="lc-label">'+stages[i]+'</span></div>'
+    + (i<3 ? '<div class="lc-line"></div>' : '')
+  ).join('');
+
+  let note = "";
+  if(currentRole==="exporter") note = c.importer + " &middot; " + c.importerCountry + (ROLES.exporter.readOnlyDest ? ' &middot; GB-side status read-only' : '');
+  if(currentRole==="forwarder") note = c.vessel+" "+c.voyage+" &middot; "+c.portLoad+" &rarr; "+c.portDischarge;
+  if(currentRole==="customs") { const cds=c.documents.find(d=>d.name.includes("CDS")); note = cds? (cds.status==="verified"?"Cleared":"MRN: "+cds.note) : ""; }
+  if(currentRole==="vessel") note = c.voyage+" &middot; ETA "+c.eta;
+  if(currentRole==="finance") { const dc=docCompleteness(c); note = dc.verified+" of "+dc.total+" documents verified"; }
+  if(currentRole==="pha") note = "ETA "+c.eta+" &middot; commercial value hidden";
+  if(currentRole==="importer"||currentRole==="veripura") { const dc=docCompleteness(c); note = dc.verified+" of "+dc.total+" documents verified"; }
+
+  const needsResponse = currentRole==="exporter" && c.poStatus==="awaiting_response";
+  const respondBtn = needsResponse
+    ? '<button class="respond-btn" onclick="respondToPO(\''+c.id+'\', event)">Respond &mdash; acknowledge and start EHC application</button>'
+    : '';
+  const badge = needsResponse
+    ? '<span class="badge b-red">New — action needed</span>'
+    : '<span class="badge '+badgeClass+'">'+ragLabel+'</span>';
+
+  const clickFn = TRACKING_ROLES.includes(currentRole) ? "openFullView" : "openPassport";
+  return '<div class="item'+(needsResponse?' needs-response':'')+'" onclick="'+clickFn+'(\''+c.id+'\')">'
+    + '<div class="item-top">'
+    + '<div><div class="item-title">'+c.commodity+' &middot; '+c.id+'</div><div class="item-sub">'+note+'</div></div>'
+    + badge
+    + '</div>'
+    + respondBtn
+    + (ROLES[currentRole].focus==="logistics" || currentRole==="veripura" ? '<div class="lifecycle">'+lc+'</div>' : '')
+    + '</div>';
+}
+
+function openPassport(id){
+  const c = CONSIGNMENTS.find(x=>x.id===id);
+  const r = ROLES[currentRole];
+  const showCommercial = r.showCommercial;
+
+  let docsHtml = c.documents.map(d=>{
+    const vis = docVisibility(d.name, currentRole);
+    if(vis==="hidden") return '';
+    const isEhc = d.name.includes("EHC") && d.status==="verified";
+    const regBadge = (isEhc && REGISTRY_BADGE_ROLES.includes(currentRole)) ? ' <span class="badge b-blue reg-badge">Registry-verified</span>' : '';
+    const src = DOC_SOURCE[d.name] ? '<span class="p-doc-source">Source: '+DOC_SOURCE[d.name]+'</span>' : '';
+    if(vis==="status"){
+      return '<div class="p-doc"><div><div class="p-doc-name">'+d.name+regBadge+'</div><div class="p-doc-sub vis-status-note">Status only &mdash; detail not shared with this role</div>'+src+'</div>'
+        + '<div class="p-doc-right">'+statusBadge(d.status)+'</div></div>';
+    }
+    const link = d.hash ? '<a class="p-doc-link" onclick="event.stopPropagation()">View file</a>' : '';
+    return '<div class="p-doc"><div><div class="p-doc-name">'+d.name+regBadge+'</div><div class="p-doc-sub">'+d.note+(d.hash?' &middot; anchored '+d.hash:'')+'</div>'+src+'</div>'
+      + '<div class="p-doc-right">'+statusBadge(d.status)+link+'</div></div>';
+  }).join('');
+
+  let meta = '<div class="p-meta">'
+    + metaField("Exporter", c.exporter)
+    + metaField("Importer", c.importer)
+    + metaField("Vessel / voyage", c.vessel+" &middot; "+c.voyage)
+    + metaField("ETA", c.eta)
+    + metaField("Container / seal", c.container+" / "+c.seal)
+    + metaField("Net weight", c.netWeight)
+    + metaField("Temperature", c.temp)
+    + metaField("HS code", c.hs)
+    + '</div>';
+
+  let actions = "";
+  if(currentRole==="pha"){
+    actions = '<div class="p-actions">'
+      + '<button class="p-btn" onclick="logCheck(this,\'Documentary check logged\')">Log documentary check</button>'
+      + '<button class="p-btn" onclick="logCheck(this,\'Physical inspection logged\')">Log physical inspection</button>'
+      + '</div>';
+  }
+
+  let timeline = '<h2 class="section" style="margin-top:1.25rem;font-size:1.083rem;">Audit trail</h2><div class="timeline">'
+    + c.timeline.map(t=>'<div class="tl-row"><b>'+t.who+'</b> — '+t.what+' <span style="float:right;">'+t.when+'</span></div>').join('')
+    + '</div>';
+
+  document.getElementById('passport').innerHTML =
+    '<button class="p-close" onclick="closePassport()">&times;</button>'
+    + '<div class="p-ref">CONSIGNMENT PASSPORT &middot; '+c.id+'</div>'
+    + '<div class="p-title">'+c.commodity+'</div>'
+    + '<div class="p-route">'+c.portLoad+' &rarr; '+c.portDischarge+'</div>'
+    + '<div id="passport-map"></div>'
+    + meta
+    + '<h2 class="section" style="margin-top:0;font-size:1.083rem;">Document compliance</h2>'
+    + '<div class="p-note" style="margin-top:0;padding-top:0;border-top:none;">VeriPura\'s full requirements checklist for this consignment, with who is responsible for each document and its current status.</div>'
+    + docsHtml
+    + actions
+    + (showCommercial ? '' : '<div class="p-note">'+ROLES[currentRole].org+'\'s view — commercial value and payment terms are hidden from this passport.</div>')
+    + timeline;
+
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('passport').classList.add('open');
+  renderPassportMap(c);
+}
+
+function metaField(label,val){
+  return '<div><span class="l">'+label+'</span><span class="v">'+val+'</span></div>';
+}
+
+function logCheck(btn,msg){
+  btn.textContent = msg;
+  btn.classList.add('done');
+  btn.disabled = true;
+}
+
+function closePassport(){
+  document.getElementById('overlay').classList.remove('open');
+  document.getElementById('passport').classList.remove('open');
+}
+
+function openFullView(id){
+  const c = CONSIGNMENTS.find(x=>x.id===id);
+  if(!c) return;
+  const rag = overallRag(c);
+
+  let docs = c.documents.filter(d=>docVisibility(d.name, currentRole)!=="hidden");
+  if(currentRole==="pha"){
+    docs.sort((a,b)=>{
+      const ap = PHA_PRIORITY_DOCS.includes(a.name) ? 0 : 1;
+      const bp = PHA_PRIORITY_DOCS.includes(b.name) ? 0 : 1;
+      return ap-bp;
+    });
+  }
+
+  const docsHtml = docs.map(d=>{
+    const isPriority = currentRole==="pha" && PHA_PRIORITY_DOCS.includes(d.name);
+    const vis = docVisibility(d.name, currentRole);
+    const isEhc = d.name.includes("EHC") && d.status==="verified";
+    const regBadge = (isEhc && REGISTRY_BADGE_ROLES.includes(currentRole)) ? ' <span class="badge b-blue reg-badge">Registry-verified</span>' : '';
+    const sub = vis==="status" ? '<span class="vis-status-note">Status only &mdash; detail not shared with this role</span>' : d.note;
+    const src = DOC_SOURCE[d.name] ? '<span class="p-doc-source">Source: '+DOC_SOURCE[d.name]+'</span>' : '';
+    return '<div class="p-doc"><div><div class="p-doc-name">'+d.name+(isPriority?'<span class="fv-priority-tag">PHA CRITICAL</span>':'')+regBadge+'</div>'
+      + '<div class="p-doc-sub">'+sub+'</div>'+src+'</div>'
+      + statusBadge(d.status) + '</div>';
+  }).join('');
+
+  document.getElementById('fv-body').innerHTML =
+    '<div class="p-ref">'+c.id+' &middot; '+daysToArrival(c)+'</div>'
+    + '<div class="p-title">'+c.commodity+'</div>'
+    + '<div class="p-route">'+c.portLoad+' &rarr; '+c.portDischarge+' &middot; '+c.vessel+' '+c.voyage+' &middot; ETA '+c.eta+'</div>'
+    + '<div style="margin:0.75rem 0;"><span class="badge b-'+(rag==="green"?"green":rag==="amber"?"amber":"red")+'">'+(rag==="green"?"On track":rag==="amber"?"Attention":"Critical")+'</span></div>'
+    + '<h2 class="section" style="margin-top:1rem;">Document compliance</h2>'
+    + docsHtml;
+
+  document.getElementById('fullview').classList.add('open');
+}
+
+function closeFullView(){
+  document.getElementById('fullview').classList.remove('open');
+}
+
+const REQUIRED_DOC_TEMPLATE = [
+  {name:"Purchase order / commercial agreement", category:"Customs & logistics", source:"Importer"},
+  {name:"Export Health Certificate (EHC)", category:"Certifications", source:"Exporter"},
+  {name:"Commercial invoice", category:"Customs & logistics", source:"Exporter"},
+  {name:"Packing list", category:"Customs & logistics", source:"Exporter"},
+  {name:"Bill of lading", category:"Customs & logistics", source:"Exporter / freight forwarder"},
+  {name:"DU-E export declaration", category:"Regulatory & trade", source:"Exporter"},
+  {name:"ENS / Safety and Security (S&S) declaration", category:"Customs & logistics", source:"Freight forwarder / vessel operator"},
+  {name:"Vessel manifest", category:"Customs & logistics", source:"Vessel operator"},
+  {name:"CHED-P pre-notification (IPAFFS)", category:"Regulatory & trade", source:"Importer / customs agent"},
+  {name:"CDS import declaration", category:"Customs & logistics", source:"Customs agent"}
+];
+
+// Flat name -> responsible-party lookup, reused wherever an individual document is rendered
+// (passport, full-screen view) so "who provides this" is always visible, not just at PO creation.
+const DOC_SOURCE = {};
+REQUIRED_DOC_TEMPLATE.forEach(d=>{ DOC_SOURCE[d.name] = d.source; });
+DOC_SOURCE["Organic certificate"] = "Exporter";
+
+function renderActionRow(){
+  const row = document.getElementById('action-row');
+  if(currentRole==="importer" || currentRole==="veripura"){
+    row.innerHTML = '<button class="new-po-btn" onclick="openNewPO()">+ New purchase order</button>';
+  } else {
+    row.innerHTML = '';
+  }
+}
+
+let poStep = 1;
+let poData = {};
+
+// Rotating pool of plausible orders so consecutive demo consignments don't all read
+// as "Frozen boneless beef" — each new PO cycles to the next sample rather than repeating one.
+const PO_SAMPLE_ORDERS = [
+  {commodity:"Frozen beef trimmings", qty:"16,500 kg"},
+  {commodity:"Frozen beef striploin", qty:"12,800 kg"},
+  {commodity:"Frozen boneless beef", qty:"24,600 kg"},
+  {commodity:"Frozen beef silverside", qty:"19,250 kg"},
+  {commodity:"Frozen beef flank", qty:"14,100 kg"}
+];
+
+function openNewPO(){
+  poCounter++;
+  poStep = 1;
+  const sample = PO_SAMPLE_ORDERS[poCounter % PO_SAMPLE_ORDERS.length];
+  poData = { commodity:sample.commodity, qty:sample.qty, inputMode:"upload",
+    filename:"PO-NordicFrozen-0"+poCounter+".pdf", poMode:"connected", exporterId:"felix", inviteEmail:"" };
+  document.getElementById('po-modal').classList.add('open');
+  renderPoStep();
+}
+
+function closeNewPO(){
+  document.getElementById('po-modal').classList.remove('open');
+}
+
+function poGoStep(n){ poStep = n; renderPoStep(); }
+function poSetInputMode(v){ poData.inputMode = v; renderPoStep(); }
+function poSetMode(v){ poData.poMode = v; renderPoStep(); }
+
+function poStepDots(){
+  return '<div class="po-steps">'+[1,2,3].map(n=>
+    '<span class="po-step-dot'+(n===poStep?' active':n<poStep?' done':'')+'"></span>'
+  ).join('')+'</div>';
+}
+
+function renderPoStep(){
+  const el = document.getElementById('po-modal-inner');
+  if(poStep===1) el.innerHTML = poStep1Html();
+  else if(poStep===2) el.innerHTML = poStep2Html();
+  else el.innerHTML = poStep3Html();
+}
+
+function poStep1Html(){
+  const up = poData.inputMode==="upload";
+  return poStepDots()
+    + '<div class="p-title" style="font-size:1.183rem;">New purchase order &middot; Step 1 of 3</div>'
+    + '<div class="p-route" style="margin-bottom:1rem;">The importer and exporter have already agreed the PO. Bring the agreed order into VeriPura by document upload or API — VeriPura reads the checklist from here.</div>'
+    + '<div class="po-tabs">'
+      + '<button class="po-tab'+(up?' active':'')+'" onclick="poSetInputMode(\'upload\')">Upload document</button>'
+      + '<button class="po-tab'+(!up?' active':'')+'" onclick="poSetInputMode(\'api\')">API interface</button>'
+      + '</div>'
+    + (up
+      ? '<div class="po-dropzone"><div class="po-dropzone-icon">&#8593;</div>'
+        + '<input class="po-dropzone-input" value="'+poData.filename+'" oninput="poData.filename=this.value">'
+        + '<div class="po-dropzone-sub">PO document received &middot; VeriPura AI is extracting the order details below</div></div>'
+      : '<div class="po-code">POST /v1/purchase-orders<br>{ "buyer": "Nordic Frozen Foods Ltd",<br>&nbsp;&nbsp;"commodity": "'+poData.commodity+'",<br>&nbsp;&nbsp;"quantity": "'+poData.qty+'" }</div>'
+        + '<div class="po-dropzone-sub" style="margin-bottom:1rem;">Connected via API &middot; order pushed directly into VeriPura</div>'
+      )
+    + '<div class="po-field"><label>Commodity &mdash; confirm or edit</label><input id="po-commodity" value="'+poData.commodity+'" oninput="poData.commodity=this.value"></div>'
+    + '<div class="po-field"><label>Quantity &mdash; confirm or edit</label><input id="po-qty" value="'+poData.qty+'" oninput="poData.qty=this.value"></div>'
+    + '<div class="po-actions"><button class="p-btn" onclick="closeNewPO()">Cancel</button><button class="p-btn primary" onclick="poGoStep(2)">Next &rarr;</button></div>';
+}
+
+function poStep2Html(){
+  const exporterOptions = EXPORTERS.map(e=>'<option value="'+e.id+'"'+(poData.exporterId===e.id?' selected':'')+'>'+e.label+'</option>').join('');
+  const connected = poData.poMode==="connected";
+  return poStepDots()
+    + '<div class="p-title" style="font-size:1.183rem;">New purchase order &middot; Step 2 of 3</div>'
+    + '<div class="p-route" style="margin-bottom:1rem;">Route the PO to the exporter so they can start entering the documents VeriPura will ask for.</div>'
+    + '<div class="po-field"><label>Send to</label><select id="po-mode" onchange="poSetMode(this.value)"><option value="connected"'+(connected?' selected':'')+'>Select a connected exporter</option><option value="invite"'+(!connected?' selected':'')+'>Invite a new exporter by email</option></select></div>'
+    + '<div class="po-field" id="po-connected-field" style="'+(connected?'':'display:none;')+'"><label>Exporter</label><select id="po-exporter" onchange="poData.exporterId=this.value">'+exporterOptions+'</select></div>'
+    + '<div class="po-field" id="po-invite-field" style="'+(connected?'display:none;':'')+'"><label>Exporter email</label><input id="po-invite-email" value="'+poData.inviteEmail+'" placeholder="name@exporter.com" oninput="poData.inviteEmail=this.value"></div>'
+    + '<div class="po-actions"><button class="p-btn" onclick="poGoStep(1)">&larr; Back</button><button class="p-btn primary" onclick="poGoStep(3)">Next &rarr;</button></div>';
+}
+
+function poStep3Html(){
+  const rows = REQUIRED_DOC_TEMPLATE.filter(d=>!d.name.startsWith("Purchase order")).map(d=>
+    '<div class="po-req-row"><div><div class="p-doc-name" style="font-size:0.87rem;">'+d.name+'</div>'
+    + '<div class="po-req-source">Source: '+d.source+'</div></div>'
+    + '<span class="badge b-gray">Awaiting upload</span></div>'
+  ).join('');
+  const exporterLabel = poData.poMode==="invite"
+    ? "the invited exporter ("+(poData.inviteEmail||"email pending")+")"
+    : (EXPORTERS.find(e=>e.id===poData.exporterId)||{}).label || "the exporter";
+  return poStepDots()
+    + '<div class="p-title" style="font-size:1.183rem;">New purchase order &middot; Step 3 of 3</div>'
+    + '<div class="p-route" style="margin-bottom:0.75rem;">VeriPura has generated the document checklist for this consignment. As each party uploads, status becomes visible to Emma and '+exporterLabel+' immediately &mdash; other parties see their documents once relevant.</div>'
+    + '<div class="po-req-list">'+rows+'</div>'
+    + '<div class="po-actions"><button class="p-btn" onclick="poGoStep(2)">&larr; Back</button><button class="p-btn primary" onclick="submitNewPO()">Create consignment</button></div>';
+}
+
+function submitNewPO(){
+  const commodity = poData.commodity || "Frozen boneless beef";
+  const qty = poData.qty || "20,000 kg";
+  const mode = poData.poMode;
+  const id = "BR-GB-0"+poCounter;
+  let exporterLabel, timelineNote, poStatus, exporterId;
+
+  if(mode==="invite"){
+    const email = poData.inviteEmail || "exporter@example.com";
+    exporterLabel = "Invited — "+email;
+    timelineNote = "Emma uploaded PO "+id+" and invited "+email+" to VeriPura to respond";
+    poStatus = "invited";
+    exporterId = null;
+  } else {
+    const exp = EXPORTERS.find(e=>e.id===poData.exporterId) || EXPORTERS[0];
+    exporterLabel = exp.label;
+    timelineNote = "Emma uploaded PO "+id+" and directed it to "+exp.label;
+    poStatus = "awaiting_response";
+    exporterId = exp.id;
+  }
+
+  const poDocNote = poData.inputMode==="api" ? "Received via API interface" : "Uploaded by Emma — "+poData.filename;
+  const poDoc = {name:"Purchase order / commercial agreement", category:"Customs & logistics", status:"verified", note:poDocNote, hash:"0x"+Math.random().toString(16).slice(2,6)+"…"+Math.random().toString(16).slice(2,6)};
+
+  const newConsignment = {
+    id, commodity, hs:"pending",
+    exporter: exporterLabel, importer:"Emma — Nordic Frozen Foods Ltd (GB)",
+    importerCountry:"United Kingdom", portLoad:"Santos", portDischarge:"Southampton BCP",
+    vessel:"pending", voyage:"pending", eta:"to be booked", netWeight:qty,
+    container:"pending", seal:"pending", temp:"-18°C frozen",
+    lifecycle:["now","pending","pending","pending"], transitProgress:0,
+    poStatus, exporterId,
+    documents: [poDoc].concat(REQUIRED_DOC_TEMPLATE.filter(d=>!d.name.startsWith("Purchase order")).map(d=>({name:d.name, category:d.category, status:"awaiting", note:"Not yet uploaded", hash:null}))),
+    timeline:[ {who:"Importer", what:timelineNote, when:"just now"} ]
+  };
+  CONSIGNMENTS.unshift(newConsignment);
+
+  if(poStatus==="awaiting_response"){
+    ALERTS.unshift({role:"exporter", sev:"info", cid:id, text:"New PO "+id+" from Emma ("+commodity+"). Respond to begin the EHC process."});
+  } else {
+    ALERTS.unshift({role:"importer", sev:"info", cid:id, text:"Invitation sent for PO "+id+". The exporter will appear once they join VeriPura."});
+  }
+  ALERTS.unshift({role:"veripura", sev:"info", cid:id, text:"New PO "+id+" created by Emma, "+(poStatus==="invited"?"invitation sent":"sent to "+exporterLabel)+"."});
+
+  closeNewPO();
+  render();
+}
+
+function respondToPO(id, ev){
+  if(ev) ev.stopPropagation();
+  const c = CONSIGNMENTS.find(x=>x.id===id);
+  c.poStatus = "acknowledged";
+  c.timeline.unshift({who:"Exporter", what:"Felix acknowledged PO "+id+" and will begin the EHC application", when:"just now"});
+  ALERTS.unshift({role:"importer", sev:"info", cid:id, text:"Felix acknowledged PO "+id+" — EHC application starting."});
+  ALERTS.unshift({role:"veripura", sev:"info", cid:id, text:"PO "+id+" acknowledged by exporter. Document checklist now active."});
+  render();
+}
+
+function relevantAlerts(){
+  return currentRole==="veripura" ? ALERTS : ALERTS.filter(a=>a.role===currentRole);
+}
+
+function worstSeverity(alerts){
+  if(alerts.some(a=>a.sev==="crit")) return "crit";
+  if(alerts.some(a=>a.sev==="warn")) return "warn";
+  if(alerts.length) return "info";
+  return null;
+}
+
+function renderBell(){
+  const relevant = relevantAlerts();
+  const dot = document.getElementById('bell-dot');
+  const worst = worstSeverity(relevant);
+  dot.style.display = worst ? 'block' : 'none';
+  dot.style.background = worst==="crit" ? "var(--red)" : worst==="warn" ? "var(--gold-dim)" : "var(--blue)";
+  document.getElementById('bell-panel').innerHTML = relevant.length
+    ? relevant.map(a=>'<div class="bell-item" onclick="openPassport(\''+a.cid+'\');toggleBell();"><span class="bell-sev sev-'+a.sev+'">'+a.sev.toUpperCase()+'</span>'+a.text+'</div>').join('')
+    : '<div class="bell-item" style="cursor:default;">No alerts for this view.</div>';
+}
+
+function toggleBell(){
+  document.getElementById('bell-panel').classList.toggle('open');
+}
+
+function flashBellIfNeeded(){
+  const worst = worstSeverity(relevantAlerts());
+  if(worst==="warn" || worst==="crit"){
+    const dot = document.getElementById('bell-dot');
+    dot.classList.remove('flash');
+    void dot.offsetWidth;
+    dot.classList.add('flash');
+  }
+}
+flashBellIfNeeded();
+setInterval(flashBellIfNeeded, 10000);
+
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.bell-wrap')) document.getElementById('bell-panel').classList.remove('open');
+});
+
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Escape') return;
+  if(document.getElementById('fullview').classList.contains('open')) closeFullView();
+  else if(document.getElementById('passport').classList.contains('open')) closePassport();
+  else if(document.getElementById('po-modal').classList.contains('open')) closeNewPO();
+});
+
+const sel = document.getElementById('role-select');
+sel.innerHTML = Object.entries(ROLES).map(([k,v])=>'<option value="'+k+'">'+v.label+'</option>').join('');
+sel.value = currentRole;
+render();
+</script>
+</body>
+</html>
