@@ -273,9 +273,13 @@ const CONSIGNMENTS = [
       {name:"CHED-P pre-notification (IPAFFS)", category:"Regulatory & trade", status:"awaiting", note:"Needs EHC first", hash:null},
       {name:"CDS import declaration", category:"Customs & logistics", status:"awaiting", note:"Not yet started", hash:null}
     ],
+    originFlags:[
+      {item:"SISBOV", note:"Animal ID range on file doesn't match the batch declared on the commercial invoice — VeriPura has escalated to the exporter for clarification."}
+    ],
     timeline:[
       {who:"Exporter", what:"EHC application submitted to MAPA", when:"24 Jul, 10:02"},
-      {who:"Freight forwarder", what:"Ocean freight booked with MSC", when:"24 Jul, 15:30"}
+      {who:"Freight forwarder", what:"Ocean freight booked with MSC", when:"24 Jul, 15:30"},
+      {who:"VeriPura", what:"SISBOV animal ID range doesn't reconcile with the commercial invoice batch — flagged for exporter clarification", when:"25 Jul, 09:20"}
     ]
   },
   {
@@ -337,17 +341,21 @@ const ALERTS = [
   {role:"veripura", sev:"warn", cid:"BR-GB-0151", text:"#BR-GB-0151: bill of lading and DU-E still awaiting upload, EHC inspection pending."},
   {role:"veripura", sev:"crit", cid:"NL-0089", text:"#NL-0089: organic certificate escalated for human review — buyer name mismatch."},
   {role:"exporter", sev:"crit", cid:"NL-0089", text:"A discrepancy on #NL-0089 is under review. You'll be notified when it's resolved."},
-  {role:"forwarder", sev:"warn", cid:"BR-GB-0143", text:"#BR-GB-0143: ENS due before loading — file with MSC."}
+  {role:"forwarder", sev:"warn", cid:"BR-GB-0143", text:"#BR-GB-0143: ENS due before loading — file with MSC."},
+  {role:"veripura", sev:"crit", cid:"BR-GB-0151", text:"#BR-GB-0151: SISBOV animal ID range doesn't reconcile with the commercial invoice batch — flagged for exporter clarification."},
+  {role:"importer", sev:"crit", cid:"BR-GB-0151", text:"An origin-verification discrepancy on #BR-GB-0151 is under review. You'll be notified when it's resolved."},
+  {role:"exporter", sev:"crit", cid:"BR-GB-0151", text:"VeriPura flagged a SISBOV animal ID mismatch on #BR-GB-0151 against your commercial invoice — please clarify."},
+  {role:"pha", sev:"warn", cid:"BR-GB-0151", text:"#BR-GB-0151: origin animal ID data flagged for reconciliation ahead of arrival."}
 ];
 
 const ROLES = {
   veripura:  { label:"VeriPura — superadmin (all parties)", org:"VeriPura", scope:"Everything, across every party — the operator view for the demo.", showCommercial:true, showAllParties:true },
   importer:  { label:"Importer — Emma, Nordic Frozen Foods Ltd", org:"Emma", scope:"Your inbound consignments to the United Kingdom, full document detail.", showCommercial:true, filterParty:"importer" },
   exporter:  { label:"Exporter — Felix, Amazon Export Ltda", org:"Felix", scope:"Your outbound consignments, grouped by importer. GB-side steps are read-only.", showCommercial:true, filterParty:"exporter", readOnlyDest:true },
-  forwarder: { label:"International freight forwarder — Gavin Johnson", org:"Gavin", scope:"Warehouse pickup through GB arrival. No commercial value or payment terms.", showCommercial:false, focus:"logistics" },
-  customs:   { label:"Customs agent — George Baker", org:"George", scope:"CDS declaration status and MRN references. No commercial value.", showCommercial:false, focus:"customs" },
-  vessel:    { label:"Vessel operator — MSC", org:"MSC", scope:"Bookings, ENS declarations, and manifests.", showCommercial:false, focus:"vessel" },
-  finance:   { label:"Trade finance — ML", org:"ML", scope:"Payment instruments, tied to document completeness.", showCommercial:true, focus:"finance" },
+  forwarder: { label:"International freight forwarder — Gavin Johnson (via TWIN)", org:"Gavin", scope:"Preview of the warehouse-to-GB-arrival logistics and document-readiness data VeriPura relays to TWIN for Gavin's own systems — Freight Forwarder does not log into VeriPura directly. No commercial value or payment terms.", showCommercial:false, focus:"logistics", noLogin:true },
+  customs:   { label:"Customs agent — George Baker (via TWIN)", org:"George", scope:"Preview of the CDS declaration status and MRN references VeriPura relays to TWIN for George's own systems — Customs Agent does not log into VeriPura directly. No commercial value.", showCommercial:false, focus:"customs", noLogin:true },
+  vessel:    { label:"Vessel operator — MSC (via TWIN)", org:"MSC", scope:"Preview of the booking, ENS, and manifest data exchanged with MSC via TWIN — Vessel Operator does not log into VeriPura directly.", showCommercial:false, focus:"vessel", noLogin:true },
+  finance:   { label:"Trade finance — ML (via TWIN)", org:"ML", scope:"Preview of the document-completeness and payment-trigger signals VeriPura relays to ML via TWIN — Trade Finance does not log into VeriPura directly.", showCommercial:true, focus:"finance", noLogin:true },
   pha:       { label:"Port Health Authority — Southampton BCP (via TWIN)", org:"Southampton PHA", scope:"Preview of the document status and alerts VeriPura relays to TWIN for Southampton BCP's own systems — Port Health Authority does not log into VeriPura directly. Commercial value and payment terms hidden.", showCommercial:false, focus:"pha", noLogin:true }
 };
 
@@ -563,10 +571,10 @@ function render(){
 
   document.getElementById('list-title').textContent =
     currentRole==="exporter" ? "Your shipments, by importer" :
-    currentRole==="forwarder" ? "Shipments, warehouse to GB arrival" :
-    currentRole==="customs" ? "CDS declarations" :
-    currentRole==="vessel" ? "Bookings" :
-    currentRole==="finance" ? "Payment instruments" :
+    currentRole==="forwarder" ? "Shipments, warehouse to GB arrival — via TWIN" :
+    currentRole==="customs" ? "CDS declarations — via TWIN" :
+    currentRole==="vessel" ? "Bookings — via TWIN" :
+    currentRole==="finance" ? "Payment instruments — via TWIN" :
     currentRole==="pha" ? "Inbound queue, Southampton BCP — via TWIN" :
     "All consignments";
 
@@ -672,6 +680,11 @@ function openPassport(id){
     actions = '<div class="p-note" style="margin-top:1rem;">This is a preview of what VeriPura relays to TWIN for Southampton BCP\'s own systems. Documentary and physical inspection outcomes are logged in the Port Health Authority\'s system, not here.</div>';
   }
 
+  let origin = "";
+  if(["importer","exporter","veripura"].includes(currentRole) && isBrazilBeef(c)){
+    origin = renderOriginValidation(ORIGIN_VALIDATION, c, {pha:false});
+  }
+
   let timeline = '<h2 class="section" style="margin-top:1.25rem;font-size:1.083rem;">Audit trail</h2><div class="timeline">'
     + c.timeline.map(t=>'<div class="tl-row"><b>'+t.who+'</b> — '+t.what+' <span style="float:right;">'+t.when+'</span></div>').join('')
     + '</div>';
@@ -687,6 +700,7 @@ function openPassport(id){
     + '<div class="p-note" style="margin-top:0;padding-top:0;border-top:none;">VeriPura\'s full requirements checklist for this consignment, with who is responsible for each document and its current status.</div>'
     + docsHtml
     + actions
+    + origin
     + (showCommercial ? '' : '<div class="p-note">'+ROLES[currentRole].org+'\'s view — commercial value and payment terms are hidden from this passport.</div>')
     + timeline;
 
@@ -730,13 +744,19 @@ function openFullView(id){
       + statusBadge(d.status) + '</div>';
   }).join('');
 
+  let origin = "";
+  if(currentRole==="pha" && isBrazilBeef(c)){
+    origin = renderOriginValidation(ORIGIN_VALIDATION.filter(d=>d.pha), c, {pha:true});
+  }
+
   document.getElementById('fv-body').innerHTML =
     '<div class="p-ref">'+c.id+' &middot; '+daysToArrival(c)+'</div>'
     + '<div class="p-title">'+c.commodity+'</div>'
     + '<div class="p-route">'+c.portLoad+' &rarr; '+c.portDischarge+' &middot; '+c.vessel+' '+c.voyage+' &middot; ETA '+c.eta+'</div>'
     + '<div style="margin:0.75rem 0;"><span class="badge b-'+(rag==="green"?"green":rag==="amber"?"amber":"red")+'">'+(rag==="green"?"On track":rag==="amber"?"Attention":"Critical")+'</span></div>'
     + '<h2 class="section" style="margin-top:1rem;">Document compliance</h2>'
-    + docsHtml;
+    + docsHtml
+    + origin;
 
   document.getElementById('fullview').classList.add('open');
 }
@@ -763,6 +783,74 @@ const REQUIRED_DOC_TEMPLATE = [
 const DOC_SOURCE = {};
 REQUIRED_DOC_TEMPLATE.forEach(d=>{ DOC_SOURCE[d.name] = d.source; });
 DOC_SOURCE["Organic certificate"] = "Exporter";
+
+// Brazil-origin independent validation inventory — data points VeriPura can cross-check against
+// Brazilian government and certification-body systems for the beef corridor, beyond the shipment
+// documents themselves. Source: FSTEC validation review, June 2026. Only SISBOV, CAR, and IBAMA
+// are live API-integrated (via the certification body); everything else is a paper record VeriPura
+// can request and hold on file. `pha:true` marks the subset that's food-safety/animal-health relevant
+// and gets relayed to Port Health Authority via TWIN — the rest (production detail, environmental,
+// commercial/customs export paperwork) is importer/exporter/VeriPura-only.
+const ORIGIN_VALIDATION = [
+  {category:"Animal identity", item:"SISBOV", source:"MAPA / SISBOV", available:true, digital:true, timeline:"Pre-shipment", owner:"Certification body", note:"", pha:true},
+  {category:"Animal identity", item:"CAR (Rural Environmental Registry)", source:"SICAR", available:true, digital:true, timeline:"Pre-shipment", owner:"Certification body", note:"", pha:false},
+  {category:"Animal identity", item:"Herd declaration", source:"State / Agricultural Defense", available:true, digital:false, timeline:"Pre-shipment", owner:"Certification body", note:"", pha:true},
+  {category:"Animal identity", item:"Vaccination (Foot-and-Mouth)", source:"State Veterinary Services", available:false, digital:false, timeline:"", owner:"", note:"No longer required — FMD vaccination discontinued in Brazil", pha:true},
+  {category:"Movement", item:"GTA (Animal Transit Permit)", source:"States / MAPA", available:true, digital:false, timeline:"Pre-shipment", owner:"Certification body", note:"", pha:true},
+  {category:"Movement", item:"Health certificate", source:"Veterinarian / State", available:true, digital:false, timeline:"Pre-shipment", owner:"Certification body", note:"", pha:true},
+  {category:"Production", item:"Feedlot record", source:"MAPA / State", available:true, digital:false, timeline:"Pre-shipment", owner:"Certification body", note:"", pha:false},
+  {category:"Production", item:"Feed records", source:"Producer", available:true, digital:false, timeline:"Pre-shipment", owner:"Certification body", note:"Own production protocol", pha:false},
+  {category:"Production", item:"Veterinary records", source:"Producer", available:true, digital:false, timeline:"Pre-shipment", owner:"Certification body", note:"Within the general production protocol — management plan", pha:false},
+  {category:"Slaughter", item:"SIF registration", source:"MAPA — SIF", available:true, digital:false, timeline:"Pre-shipment", owner:"Meatpacker", note:"", pha:true},
+  {category:"Slaughter", item:"Ante-mortem inspection", source:"SIF", available:true, digital:false, timeline:"Pre-shipment", owner:"Meatpacker", note:"", pha:true},
+  {category:"Slaughter", item:"Post-mortem inspection", source:"SIF", available:true, digital:false, timeline:"Post-slaughter", owner:"Meatpacker", note:"", pha:true},
+  {category:"Slaughter", item:"Slaughter batch", source:"Meatpacker", available:true, digital:false, timeline:"Pre-shipment", owner:"Meatpacker", note:"", pha:true},
+  {category:"Laboratory", item:"COA (certificate of analysis)", source:"Accredited laboratories", available:true, digital:false, timeline:"Post-slaughter", owner:"Meatpacker", note:"", pha:true},
+  {category:"Laboratory", item:"Residues and contaminants", source:"Laboratories", available:true, digital:false, timeline:"Post-slaughter", owner:"Meatpacker", note:"", pha:true},
+  {category:"Logistics", item:"Cold chain temperature", source:"Logistics operators", available:true, digital:false, timeline:"Post-slaughter", owner:"Meatpacker", note:"", pha:true},
+  {category:"Logistics", item:"Transport records", source:"Carriers", available:true, digital:false, timeline:"Pre-slaughter", owner:"Meatpacker", note:"", pha:false},
+  {category:"Logistics", item:"Storage", source:"Meatpackers / warehouses", available:true, digital:false, timeline:"Pre-slaughter", owner:"Meatpacker", note:"", pha:false},
+  {category:"Environmental", item:"CAR geolocation", source:"SICAR", available:true, digital:true, timeline:"Pre-shipment", owner:"Certification body", note:"", pha:false},
+  {category:"Environmental", item:"IBAMA embargoes", source:"IBAMA", available:true, digital:true, timeline:"Pre-shipment", owner:"Certification body", note:"", pha:false},
+  {category:"Environmental", item:"Land use", source:"Geospatial", available:true, digital:false, timeline:"Pre-shipment", owner:"Certification body", note:"", pha:false},
+  {category:"Export", item:"CSI / CZI (international sanitary certificate)", source:"MAPA", available:true, digital:false, timeline:"Post-slaughter", owner:"Meatpacker", note:"", pha:true},
+  {category:"Export", item:"DU-E (SISCOMEX)", source:"Federal Revenue", available:true, digital:false, timeline:"Post-slaughter", owner:"Meatpacker", note:"", pha:false},
+  {category:"Export", item:"Certificate of origin", source:"Chambers of commerce", available:true, digital:false, timeline:"Post-slaughter", owner:"Meatpacker", note:"", pha:false},
+  {category:"Export", item:"Packing list / invoice", source:"Exporter", available:true, digital:false, timeline:"Post-slaughter", owner:"Meatpacker", note:"", pha:false}
+];
+
+function isBrazilBeef(c){
+  return c.portLoad==="Santos" && /beef/i.test(c.commodity);
+}
+
+// Renders the origin-verification panel for a consignment. `items` is the (possibly pha-filtered)
+// slice of ORIGIN_VALIDATION to show; `c.originFlags` (if present) marks specific items where
+// VeriPura's cross-check against Brazilian systems found an inconsistency with what the exporter
+// claimed in their shipment documents — those render as Flagged instead of On file, matching the
+// same red-flag treatment used elsewhere (e.g. the NL-0089 organic certificate mismatch).
+function renderOriginValidation(items, c, opts){
+  opts = opts || {};
+  const flags = c.originFlags || [];
+  const rows = items.map(d=>{
+    const flag = flags.find(f=>f.item===d.item);
+    const badge = flag ? '<span class="badge b-red">Flagged</span>'
+      : !d.available ? '<span class="badge b-gray">Not applicable</span>'
+      : '<span class="badge b-green">On file</span>';
+    const digitalTag = d.available ? (d.digital ? '<span class="badge b-blue" style="margin-left:0.35rem;">API-integrated</span>' : '<span class="badge b-gray" style="margin-left:0.35rem;">Paper record</span>') : '';
+    const subParts = [d.source, d.timeline, d.owner].filter(Boolean).join(' &middot; ');
+    const noteHtml = flag ? ' &middot; <b style="color:var(--red);">'+flag.note+'</b>' : (d.note ? ' &middot; '+d.note : '');
+    return '<div class="p-doc"><div><div class="p-doc-name">'+d.item+digitalTag+'</div>'
+      + '<div class="p-doc-sub">'+subParts+noteHtml+'</div>'
+      + '<span class="p-doc-source">'+d.category+'</span></div>'
+      + '<div class="p-doc-right">'+badge+'</div></div>';
+  }).join('');
+  const introText = opts.pha
+    ? "Origin food-safety and traceability data relayed to TWIN for Southampton BCP — a subset of what VeriPura validates against Brazilian systems for this consignment."
+    : "Independent origin data VeriPura validates against Brazilian government and certification systems for this consignment, alongside the shipment documents above.";
+  return '<h2 class="section" style="margin-top:1.25rem;font-size:1.083rem;">Origin verification — Brazil beef corridor</h2>'
+    + '<div class="p-note" style="margin-top:0;padding-top:0;border-top:none;">'+introText+'</div>'
+    + rows;
+}
 
 function renderActionRow(){
   const row = document.getElementById('action-row');
